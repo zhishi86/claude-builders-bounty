@@ -20,7 +20,14 @@ except:
     print(sys.stdin.read())
 " 2>/dev/null || echo "$INPUT")
 
-# Dangerous patterns — case-insensitive matching
+# Determine if grep supports PCRE (-P)
+if echo "test" | grep -P "test" &>/dev/null; then
+  GREP_CMD="grep -qiP"
+else
+  GREP_CMD="grep -qiE"
+fi
+
+# Dangerous patterns — case-insensitive matching (PCRE when available)
 PATTERNS=(
   "rm\s+-rf\s+[/~]"
   "rm\s+-rf\s+/\s*$"
@@ -41,7 +48,7 @@ PATTERNS=(
 )
 
 for PATTERN in "${PATTERNS[@]}"; do
-  if echo "$COMMAND" | grep -qiE "$PATTERN" 2>/dev/null; then
+  if echo "$COMMAND" | $GREP_CMD "$PATTERN" 2>/dev/null; then
     TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
     echo "[$TIMESTAMP] BLOCKED | project: $PROJECT_PATH | cmd: $COMMAND" >> "$BLOCKED_LOG"
     echo "{\"approved\": false, \"message\": \"⛔ BLOCKED by security hook: command matches dangerous pattern '$PATTERN'. This command could cause data loss. If you're sure, run it manually.\"}"
